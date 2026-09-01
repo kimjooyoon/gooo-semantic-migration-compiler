@@ -1,0 +1,41 @@
+name: Immutable release verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published immutable release tag to verify"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CROSS_PROJECT_REQUIRED_GATES: "0"
+
+jobs:
+  verify-release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Checkout the release target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          token: ${{ github.token }}
+          fetch-depth: 0
+      - name: Verify immutable release, annotated tag, and asset digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")
+          echo "$release" | jq -e --arg tag "$RELEASE_TAG" '.tag_name == $tag and .draft == false and .immutable == true and (.assets | length) > 0' >/dev/null
+          tag_object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
+          tag_type=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')
+          test "$tag_type" = tag
+          target=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object" --jq '.object.sha')
+          echo "$release" | jq --arg tag_object "$tag_object" --arg target "$target" '{release_id:.id,tag:.tag_name,immutable:.immutable,tag_object:$tag_object,target:$target,assets:[.assets[]|{id:.id,name:.name,size:.size,digest:.digest}]}' >> "$GITHUB_STEP_SUMMARY"
