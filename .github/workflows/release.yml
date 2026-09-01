@@ -1,0 +1,65 @@
+name: Immutable semantic migration compiler release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+env:
+  CROSS_PROJECT_REQUIRED_GATES: "0"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout signed-off tag target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ github.token }}
+          fetch-depth: 0
+      - name: Set up Go 1.27
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.27.0
+          cache: false
+      - name: Build release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_root="$RUNNER_TEMP/gooo-semantic-migration-compiler-release"
+          mkdir -p "$package_root"
+          go build -trimpath -o "$package_root/gooo-semantic-migration-compiler" ./cmd/gooo-semantic-migration-compiler
+          cp README.md LICENSE "$package_root/"
+          cp -R .gooo contracts docs examples "$package_root/"
+          tarball="$RUNNER_TEMP/gooo-semantic-migration-compiler-${GITHUB_REF_NAME}-linux-amd64.tar.gz"
+          tar -C "$RUNNER_TEMP" -czf "$tarball" gooo-semantic-migration-compiler-release
+          sha256sum "$tarball" > "$tarball.sha256"
+          jq -n \
+            --arg tag "$GITHUB_REF_NAME" \
+            --arg target "$GITHUB_SHA" \
+            --arg package "$(basename "$tarball")" \
+            --arg digest "sha256:$(sha256sum "$tarball" | awk '{print $1}')" \
+            --arg size "$(wc -c < "$tarball" | tr -d ' ')" \
+            '{schema:"gooo/semantic-migration-compiler/release-manifest/v1",tag:$tag,target_commit:$target,asset:$package,size_bytes:($size|tonumber),digest:$digest,immutable:true,cross_project_required_gates:0}' \
+            > "$package_root/release-manifest.json"
+          cp "$package_root/release-manifest.json" "$RUNNER_TEMP/release-manifest.json"
+          echo "TARBALL=$tarball" >> "$GITHUB_ENV"
+      - name: Create immutable GitHub release and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" "$TARBALL" "$TARBALL.sha256" "$RUNNER_TEMP/release-manifest.json" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --title "Gooo semantic migration compiler $GITHUB_REF_NAME" \
+            --notes "Immutable operator-promoted release for $GITHUB_SHA. Runtime authority remains zero for repository writes, commits, merges, tags, releases, and cross-project gates."
+      - name: Verify release identity and asset digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json databaseId,tagName,targetCommitish,assets --jq '{release_id:.databaseId,tag:.tagName,target:.targetCommitish,assets:[.assets[]|{id: .id,name: .name,size: .size,updated_at: .updatedAt}]} ' >> "$GITHUB_STEP_SUMMARY"

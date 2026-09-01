@@ -1,0 +1,1 @@
+{"schema":"gooo/semantic-migration-compiler/case/v1","case_id":"rename-closed","description":"A declared complete rename preserves the observable checkout.","replay_runs":2}

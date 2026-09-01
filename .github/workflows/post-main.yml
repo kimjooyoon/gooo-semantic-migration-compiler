@@ -1,0 +1,61 @@
+name: Semantic migration compiler main verification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CROSS_PROJECT_REQUIRED_GATES: "0"
+
+jobs:
+  main-validation:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: "0"
+      ARTIFACT_NAME: gooo-semantic-migration-compiler-main-evidence-${{ github.run_id }}
+    steps:
+      - name: Checkout main commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          token: ${{ github.token }}
+      - name: Set up Go 1.27
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.27.0
+          cache: false
+      - name: Verify toolchain
+        run: test "$(go env GOVERSION)" = "go1.27.0"
+      - name: Verify formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(gofmt -l $(git ls-files '*.go'))
+          test -z "$files"
+      - name: Produce main evidence
+        shell: bash
+        run: ./scripts/ci-metrics.sh "$RUNNER_TEMP/gooo-semantic-migration-compiler-work"
+      - name: Publish human report
+        run: cat "$RUNNER_TEMP/gooo-semantic-migration-compiler-work/conformance/human-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload immutable main artifact
+        id: evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gooo-semantic-migration-compiler-main-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/gooo-semantic-migration-compiler-work/conformance
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record main artifact identity
+        run: |
+          {
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "main_sha=${GITHUB_SHA}"
+            echo "main_run_id=${GITHUB_RUN_ID}"
+            echo "main_job=${GITHUB_JOB}"
+            echo "artifact_id=${{ steps.evidence.outputs.artifact-id }}"
+            echo "artifact_digest=${{ steps.evidence.outputs.artifact-digest }}"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,29 @@
+{
+  "schema": "gooo/semantic-migration-compiler/denominator/v1",
+  "authority": ".gooo/migration-compiler.gooo",
+  "denominator_id": "semantic-migration-compiler-v1",
+  "cases": 9,
+  "unit": "fixed-case",
+  "decision_precedence": ["REFUTED", "UNKNOWN", "CLOSED"],
+  "unknown_fields": ["stage", "step", "reason", "unknown_class", "next_operation", "blocked_by"],
+  "case_vector": [
+    {"ordinal": 1, "id": "rename-closed", "expected": "CLOSED"},
+    {"ordinal": 2, "id": "split-closed", "expected": "CLOSED"},
+    {"ordinal": 3, "id": "rename-split-closed", "expected": "CLOSED"},
+    {"ordinal": 4, "id": "missing-mapping-unknown", "expected": "UNKNOWN"},
+    {"ordinal": 5, "id": "ambiguous-split-unknown", "expected": "UNKNOWN"},
+    {"ordinal": 6, "id": "unbounded-merge-unknown", "expected": "UNKNOWN"},
+    {"ordinal": 7, "id": "incompatible-removal-refuted", "expected": "REFUTED"},
+    {"ordinal": 8, "id": "invariant-break-refuted", "expected": "REFUTED"},
+    {"ordinal": 9, "id": "counterexample-refuted", "expected": "REFUTED"}
+  ],
+  "authority_policy": {
+    "input_repository_writes": 0,
+    "local_validation_commands": 0,
+    "cross_project_required_gates": 0,
+    "automatic_commit": 0,
+    "automatic_push": 0,
+    "automatic_merge": 0,
+    "automatic_release": 0
+  }
+}

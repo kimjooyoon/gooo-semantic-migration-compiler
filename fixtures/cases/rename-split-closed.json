@@ -1,0 +1,1 @@
+{"schema":"gooo/semantic-migration-compiler/case/v1","case_id":"rename-split-closed","description":"Rename and split compose deterministically in one plan.","replay_runs":2}

@@ -1,0 +1,1 @@
+{"schema":"gooo/semantic-migration-compiler/case/v1","case_id":"incompatible-removal-refuted","description":"Removing an active legacy cache loses an observable effect.","replay_runs":1}

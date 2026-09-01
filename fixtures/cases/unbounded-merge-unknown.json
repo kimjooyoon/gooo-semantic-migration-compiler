@@ -1,0 +1,1 @@
+{"schema":"gooo/semantic-migration-compiler/case/v1","case_id":"unbounded-merge-unknown","description":"A merge without a fixed scope cannot be closed.","replay_runs":1}

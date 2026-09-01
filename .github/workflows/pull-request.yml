@@ -1,0 +1,56 @@
+name: Semantic migration compiler pull request
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CROSS_PROJECT_REQUIRED_GATES: "0"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+      ARTIFACT_NAME: gooo-semantic-migration-compiler-pr-evidence-${{ github.run_id }}
+    steps:
+      - name: Checkout proposed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          token: ${{ github.token }}
+      - name: Set up Go 1.27
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.27.0
+          cache: false
+      - name: Verify toolchain
+        run: test "$(go env GOVERSION)" = "go1.27.0"
+      - name: Verify formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(gofmt -l $(git ls-files '*.go'))
+          test -z "$files"
+      - name: Compile, build, test, conformance, and integration evidence
+        shell: bash
+        run: ./scripts/ci-metrics.sh "$RUNNER_TEMP/gooo-semantic-migration-compiler-work"
+      - name: Publish human report
+        run: cat "$RUNNER_TEMP/gooo-semantic-migration-compiler-work/conformance/human-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload immutable evidence artifact
+        id: evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gooo-semantic-migration-compiler-pr-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/gooo-semantic-migration-compiler-work/conformance
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record artifact identity
+        run: |
+          {
+            echo "artifact_id=${{ steps.evidence.outputs.artifact-id }}"
+            echo "artifact_digest=${{ steps.evidence.outputs.artifact-digest }}"
+          } >> "$GITHUB_STEP_SUMMARY"

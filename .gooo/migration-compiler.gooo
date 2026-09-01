@@ -1,0 +1,46 @@
+gooo semantic_migration_compiler v1
+
+# This file is the semantic authority. Go implements the declared activities;
+# it does not invent migration rules, invariants, or case outcomes.
+authority metacode
+dialects versions=v1|v2
+contract version=v1 id=checkout-v1 schema=gooo/checkout/contract/v1 concepts=load|process|legacy_cache|read|lookup
+contract version=v2 id=checkout-v2 schema=gooo/checkout/contract/v2 concepts=fetch|validate|normalize|commit
+
+mapping ordinal=1 id=rename-load kind=rename from=load to=fetch complete=true compatible=true reversible=true scope_fixed=true invariant_safe=true
+mapping ordinal=2 id=split-process kind=split from=process to=validate|normalize complete=true compatible=true reversible=true scope_fixed=true invariant_safe=true
+mapping ordinal=3 id=merge-read-lookup kind=merge from=read|lookup to=fetch complete=true compatible=true reversible=true scope_fixed=true invariant_safe=true
+mapping ordinal=4 id=remove-legacy-cache kind=remove from=legacy_cache to=- complete=true compatible=false reversible=false scope_fixed=true invariant_safe=false reason=incompatible-removal-information-loss
+mapping ordinal=5 id=ambiguous-split kind=split from=process to=validate|normalize complete=false compatible=true reversible=false scope_fixed=true invariant_safe=true reason=ambiguous-target-order
+mapping ordinal=6 id=unbounded-merge kind=merge from=read|lookup to=fetch complete=false compatible=true reversible=false scope_fixed=false invariant_safe=true reason=merge-scope-is-not-fixed
+mapping ordinal=7 id=break-effect kind=rename from=load to=fetch complete=true compatible=true reversible=true scope_fixed=true invariant_safe=false target_effects=write reason=effect-trace-invariant-break
+mapping ordinal=8 id=counterexample-terminal kind=terminal from=- to=- complete=true compatible=false reversible=false scope_fixed=true invariant_safe=false reason=counterexample
+
+invariant ordinal=1 id=terminal-reason predicate=observable-terminal-reason preserve=true
+invariant ordinal=2 id=effect-trace predicate=observable-effect-trace preserve=true
+invariant ordinal=3 id=capability-set predicate=observable-capability-set preserve=true
+invariant ordinal=4 id=origin-coverage predicate=complete-origin-mapping preserve=true
+
+activity ordinal=1 id=parse-source semantic=parse-old-gooo
+activity ordinal=2 id=lower-semantic-ir semantic=source-to-semantic-ir
+activity ordinal=3 id=compile-migration-plan semantic=resolve-declared-mappings
+activity ordinal=4 id=generate-target-gooo semantic=caller-owned-migrated-source
+activity ordinal=5 id=execute-before-after semantic=observable-runtime-replay
+activity ordinal=6 id=verify-invariants semantic=closed-unknown-refuted
+activity ordinal=7 id=emit-human-report semantic=human-readable-evidence
+
+denominator id=semantic-migration-compiler-v1 cases=9 unit=fixed-case
+precedence REFUTED>UNKNOWN>CLOSED
+unknown_fields stage,step,reason,unknown_class,next_operation,blocked_by
+authority_policy repository_writes=0 local_validation_commands=0 local_test_executions=0 local_build_executions=0 local_vet_executions=0 local_conformance_executions=0 local_integration_executions=0 cross_project_required_gates=0 automatic_commit=0 automatic_push=0 automatic_merge=0 automatic_release=0
+source_policy input_repository_writes=0 outputs=caller_owned_only overwrite_source=never
+
+case ordinal=1 id=rename-closed fixture=fixtures/cases/rename-closed.json source=examples/checkout-project/main.gooo plan=rename-load expected=CLOSED
+case ordinal=2 id=split-closed fixture=fixtures/cases/split-closed.json source=examples/checkout-project/main.gooo plan=split-process expected=CLOSED
+case ordinal=3 id=rename-split-closed fixture=fixtures/cases/rename-split-closed.json source=examples/checkout-project/main.gooo plan=rename-split expected=CLOSED
+case ordinal=4 id=missing-mapping-unknown fixture=fixtures/cases/missing-mapping-unknown.json source=examples/checkout-project/main.gooo plan=missing-mapping expected=UNKNOWN
+case ordinal=5 id=ambiguous-split-unknown fixture=fixtures/cases/ambiguous-split-unknown.json source=examples/checkout-project/main.gooo plan=ambiguous-split expected=UNKNOWN
+case ordinal=6 id=unbounded-merge-unknown fixture=fixtures/cases/unbounded-merge-unknown.json source=examples/checkout-project/main.gooo plan=unbounded-merge expected=UNKNOWN
+case ordinal=7 id=incompatible-removal-refuted fixture=fixtures/cases/incompatible-removal-refuted.json source=examples/checkout-project/legacy.gooo plan=remove-legacy-cache expected=REFUTED
+case ordinal=8 id=invariant-break-refuted fixture=fixtures/cases/invariant-break-refuted.json source=examples/checkout-project/main.gooo plan=break-effect expected=REFUTED
+case ordinal=9 id=counterexample-refuted fixture=fixtures/cases/counterexample-refuted.json source=examples/checkout-project/main.gooo plan=counterexample-terminal expected=REFUTED target_terminal=rejected
