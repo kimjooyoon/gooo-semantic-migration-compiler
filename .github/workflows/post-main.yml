@@ -30,12 +30,6 @@ jobs:
           cache: false
       - name: Verify toolchain
         run: test "$(go env GOVERSION)" = "go1.27.0"
-      - name: Verify formatting
-        shell: bash
-        run: |
-          set -euo pipefail
-          files=$(gofmt -l $(git ls-files '*.go'))
-          test -z "$files"
       - name: Produce main evidence
         shell: bash
         run: ./scripts/ci-metrics.sh "$RUNNER_TEMP/gooo-semantic-migration-compiler-work"

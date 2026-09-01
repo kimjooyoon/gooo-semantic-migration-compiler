@@ -52,7 +52,11 @@ func RunConformance(meta MetaContract, metaRaw []byte, root, outputDir string) (
 	if len(index.Cases) != meta.Denominator.Cases || metrics.Tests.Executed != metrics.Tests.Total {
 		return ConformanceIndex{}, errors.New("fixed denominator was not fully evaluated")
 	}
-	metrics.Inventory, _ = InventoryForRoot(root)
+	inventory, inventoryErr := InventoryForRoot(root)
+	if inventoryErr != nil {
+		return ConformanceIndex{}, inventoryErr
+	}
+	metrics.Inventory = inventory
 	metrics.StageMetrics = append(metrics.StageMetrics, StageMetric{Stage: "conformance_runtime", WallMS: int(time.Since(start).Milliseconds()), PeakRSSKiB: peakRSSKiB()})
 	if metrics.Closed+metrics.Unknown+metrics.Refuted != metrics.FixedDenominator {
 		return ConformanceIndex{}, errors.New("decision counts do not cover the fixed denominator")
@@ -64,16 +68,17 @@ func RunConformance(meta MetaContract, metaRaw []byte, root, outputDir string) (
 	if err := writeJSON(filepath.Join(outputDir, "conformance-index.json"), index); err != nil {
 		return ConformanceIndex{}, err
 	}
-	human := renderConformanceReport(index)
-	if err := os.WriteFile(filepath.Join(outputDir, "human-report.md"), []byte(human), 0o644); err != nil {
-		return ConformanceIndex{}, err
+	generatedArtifacts, generatedBytes, countErr := countOutputArtifacts(outputDir)
+	if countErr != nil {
+		return ConformanceIndex{}, countErr
 	}
-	metrics.GeneratedArtifacts, metrics.GeneratedBytes, err = countOutputArtifacts(outputDir)
-	if err != nil {
-		return ConformanceIndex{}, err
-	}
+	metrics.GeneratedArtifacts, metrics.GeneratedBytes = generatedArtifacts, generatedBytes
 	index.Metrics = metrics
 	if err := writeJSON(filepath.Join(outputDir, "conformance-index.json"), index); err != nil {
+		return ConformanceIndex{}, err
+	}
+	human := renderConformanceReport(index)
+	if err := os.WriteFile(filepath.Join(outputDir, "human-report.md"), []byte(human), 0o644); err != nil {
 		return ConformanceIndex{}, err
 	}
 	if err := writeJSON(filepath.Join(outputDir, "metrics.json"), metrics); err != nil {

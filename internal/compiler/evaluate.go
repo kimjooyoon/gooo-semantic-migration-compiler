@@ -242,6 +242,14 @@ func (s *stageRecorder) record(stage string, start time.Time) {
 
 func (s *stageRecorder) finish() []StageMetric { return append([]StageMetric{}, s.values...) }
 
+func peakRSSKiB() int {
+	usage := syscall.Rusage{}
+	if syscall.Getrusage(syscall.RUSAGE_SELF, &usage) != nil {
+		return 0
+	}
+	return int(usage.Maxrss)
+}
+
 func measureStage(name string, fn func()) StageMetric {
 	start := time.Now()
 	fn()
