@@ -59,3 +59,14 @@ func TestOutputMustBeOutsideInputRepository(t *testing.T) {
 		t.Fatal("repository-owned output was accepted")
 	}
 }
+
+func TestParseKeyValuesRejectsEmptyAndDuplicateValues(t *testing.T) {
+	for _, tokens := range [][]string{
+		{"id="},
+		{"id=first", "id=second"},
+	} {
+		if _, err := parseKeyValues(tokens); err == nil {
+			t.Fatalf("parseKeyValues(%v) accepted invalid input", tokens)
+		}
+	}
+}

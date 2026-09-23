@@ -189,7 +189,7 @@ func parseKeyValues(tokens []string) (map[string]string, error) {
 	values := map[string]string{}
 	for _, token := range tokens {
 		key, value, ok := strings.Cut(token, "=")
-		if !ok || key == "" {
+		if !ok || key == "" || value == "" {
 			return nil, fmt.Errorf("invalid key/value token %q", token)
 		}
 		if _, exists := values[key]; exists {
