@@ -24,6 +24,17 @@ func LoadMeta(path string) (MetaContract, []byte, error) {
 
 func ParseMeta(raw []byte) (MetaContract, error) {
 	meta := MetaContract{AuthorityPolicy: map[string]string{}, SourcePolicy: map[string]string{}}
+	singleton := map[string]bool{
+		"gooo":             true,
+		"authority":        true,
+		"precedence":       true,
+		"unknown_fields":   true,
+		"dialects":         true,
+		"denominator":      true,
+		"authority_policy": true,
+		"source_policy":    true,
+	}
+	seen := map[string]bool{}
 	for lineNumber, rawLine := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n") {
 		line := strings.TrimSpace(stripComment(rawLine))
 		if line == "" {
@@ -35,6 +46,12 @@ func ParseMeta(raw []byte) (MetaContract, error) {
 		}
 		if len(tokens) == 0 {
 			continue
+		}
+		if singleton[tokens[0]] {
+			if seen[tokens[0]] {
+				return MetaContract{}, fmt.Errorf("line %d: duplicate singleton declaration %q", lineNumber+1, tokens[0])
+			}
+			seen[tokens[0]] = true
 		}
 		if tokens[0] == "gooo" {
 			if len(tokens) != 3 || tokens[1] != "semantic_migration_compiler" || tokens[2] != "v1" {
