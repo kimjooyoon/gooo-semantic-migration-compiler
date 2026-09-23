@@ -135,6 +135,7 @@ func ParseProgram(raw []byte) (Program, error) {
 	program := Program{Schema: ProgramSchema, Nodes: []Node{}, Edges: []Edge{}}
 	headerSeen := false
 	programSeen := false
+	terminalSeen := false
 	for lineNumber, rawLine := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n") {
 		line := strings.TrimSpace(stripComment(rawLine))
 		if line == "" {
@@ -170,7 +171,11 @@ func ParseProgram(raw []byte) (Program, error) {
 		case "edge":
 			program.Edges = append(program.Edges, Edge{ID: values["id"], From: values["from"], To: values["to"]})
 		case "terminal":
+			if terminalSeen {
+				return Program{}, fmt.Errorf("line %d: duplicate terminal declaration", lineNumber+1)
+			}
 			program.TerminalReason = values["reason"]
+			terminalSeen = true
 		default:
 			return Program{}, fmt.Errorf("line %d: unsupported program declaration %q", lineNumber+1, tokens[0])
 		}
