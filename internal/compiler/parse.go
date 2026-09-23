@@ -24,6 +24,7 @@ func LoadMeta(path string) (MetaContract, []byte, error) {
 
 func ParseMeta(raw []byte) (MetaContract, error) {
 	meta := MetaContract{AuthorityPolicy: map[string]string{}, SourcePolicy: map[string]string{}}
+	headerSeen := false
 	for lineNumber, rawLine := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n") {
 		line := strings.TrimSpace(stripComment(rawLine))
 		if line == "" {
@@ -37,10 +38,14 @@ func ParseMeta(raw []byte) (MetaContract, error) {
 			continue
 		}
 		if tokens[0] == "gooo" {
+			if headerSeen {
+				return MetaContract{}, fmt.Errorf("line %d: duplicate meta header", lineNumber+1)
+			}
 			if len(tokens) != 3 || tokens[1] != "semantic_migration_compiler" || tokens[2] != "v1" {
 				return MetaContract{}, fmt.Errorf("line %d: invalid meta header", lineNumber+1)
 			}
 			meta.Schema = MetaSchema
+			headerSeen = true
 			continue
 		}
 		if tokens[0] == "authority" {
@@ -148,6 +153,9 @@ func ParseProgram(raw []byte) (Program, error) {
 			continue
 		}
 		if tokens[0] == "gooo" {
+			if headerSeen {
+				return Program{}, fmt.Errorf("line %d: duplicate program header", lineNumber+1)
+			}
 			if len(tokens) != 3 || tokens[1] != "program" || tokens[2] != "v1" {
 				return Program{}, fmt.Errorf("line %d: invalid program header", lineNumber+1)
 			}
